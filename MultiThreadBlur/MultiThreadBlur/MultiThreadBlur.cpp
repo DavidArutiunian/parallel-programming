@@ -8,6 +8,8 @@
 
 #include "EasyBMP.h"
 
+constexpr int MIN_SECTION_HEIGHT = 2;
+
 struct ThreadData
 {
     BMP* bmp;
@@ -26,6 +28,7 @@ RGBApixel ApplyBlurForPixel(int i, int j, BMP& bmp, int blur_radius)
     int count = 0;
     const int width = bmp.TellWidth();
     const int height = bmp.TellHeight();
+    const RGBApixel main_pixel = bmp.GetPixel(i, j);
     for (int ix = -blur_radius; ix < blur_radius; ++ix)
     {
         for (int iy = -blur_radius; iy < blur_radius; ++iy)
@@ -47,7 +50,8 @@ RGBApixel ApplyBlurForPixel(int i, int j, BMP& bmp, int blur_radius)
     return RGBApixel{
         static_cast<ebmpBYTE>(b / count),
         static_cast<ebmpBYTE>(g / count),
-        static_cast<ebmpBYTE>(r / count)
+        static_cast<ebmpBYTE>(r / count),
+        main_pixel.Alpha
     };
 }
 
@@ -112,8 +116,6 @@ int main(int argc, char* argv[])
     bmp.ReadFromFile(input_path.c_str());
 
     std::cout << "Successfully read file \"" << input_path.c_str() << "\"" << std::endl;
-    std::cout << "Blurring with radius " << blur_radius << " in " << threads << " threads on " << cores << " cores" <<
-        std::endl;
 
     const int w = bmp.TellWidth();
     const int h = bmp.TellHeight();
@@ -124,40 +126,68 @@ int main(int argc, char* argv[])
     {
         for (int j = 0; j < h; j++)
         {
-            const auto blurred_pixel = ApplyBlurForPixel(i, j, bmp);
+            const auto blurred_pixel = ApplyBlurForPixel(i, j, bmp, blur_radius);
             bmp.SetPixel(i, j, blurred_pixel);
         }
     }
 
 #else
 
-    const HANDLE process = GetCurrentProcess();
-    const DWORD_PTR affinity_mask = 1 << (cores - 1);
+    const DWORD_PTR affinity_mask = (1 << cores) - 1;
 
-    if (!SetProcessAffinityMask(process, affinity_mask))
+    const int section_height = max(h / threads, MIN_SECTION_HEIGHT);
+    const int total_threads_count = min(threads, h / section_height);
+    const int rest = max(h - (threads * section_height), 0);
+
+    if (threads > h / section_height)
     {
-        std::cerr << "Error occured when setting affinity mask" << std::endl;
-        return EXIT_FAILURE;
+        std::cerr
+            << "Warning! Cannot have more than "
+            << total_threads_count
+            << " threads for "
+            << h
+            << "px height"
+            << std::endl;
+        std::cerr << "Setting threads count to " << total_threads_count << std::endl;
     }
 
-    ThreadData* params = new ThreadData[threads];
-    HANDLE* handles = new HANDLE[threads];
-    for (int i = 0; i < threads; i++)
+    std::cout
+        << "Blurring with radius "
+        << blur_radius << " in "
+        << total_threads_count
+        << " threads on "
+        << cores
+        << " cores"
+        << std::endl;
+
+    ThreadData* params = new ThreadData[total_threads_count];
+    HANDLE* handles = new HANDLE[total_threads_count];
+    for (int i = 0; i < total_threads_count; i++)
     {
-        const int top = i * (h / threads);
-        const int left = 0;
-        const int width = w;
-        const int height = h / threads;
-        params[i] = ThreadData{&bmp, top, left, width, height, blur_radius};
+        const int top = i * section_height;
+        const bool is_last = i == total_threads_count - 1;
+        params[i] = ThreadData{
+            &bmp,
+            top,
+            0,
+            w,
+            section_height + (is_last ? rest : 0),
+            blur_radius
+        };
         handles[i] = CreateThread(nullptr, 0, &ThreadFunc, &params[i], CREATE_SUSPENDED, nullptr);
+        if (!SetThreadAffinityMask(handles[i], affinity_mask))
+        {
+            std::cerr << "Error occured when setting affinity mask" << std::endl;
+            return EXIT_FAILURE;
+        }
     }
 
-    for (int i = 0; i < threads; i++)
+    for (int i = 0; i < total_threads_count; i++)
     {
         ResumeThread(handles[i]);
     }
 
-    WaitForMultipleObjects(threads, handles, true, INFINITE);
+    WaitForMultipleObjects(total_threads_count, handles, true, INFINITE);
 
     delete[] params;
     delete[] handles;
