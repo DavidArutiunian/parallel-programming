@@ -131,6 +131,15 @@ int main(int argc, char* argv[])
 
 #else
 
+    const HANDLE process = GetCurrentProcess();
+    const DWORD_PTR affinity_mask = 1 << (cores - 1);
+
+    if (!SetProcessAffinityMask(process, affinity_mask))
+    {
+        std::cerr << "Error occured when setting affinity mask" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     ThreadData* params = new ThreadData[threads];
     HANDLE* handles = new HANDLE[threads];
     for (int i = 0; i < threads; i++)
