@@ -73,10 +73,11 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
 
 int main(int argc, char* argv[])
 {
-    const std::string path(argv[1]);
+    const std::string input_path(argv[1]);
+    const std::string output_path(argv[2]);
 
     BMP bmp;
-    bmp.ReadFromFile(path.c_str());
+    bmp.ReadFromFile(input_path.c_str());
 
     const int w = bmp.TellWidth();
     const int h = bmp.TellHeight();
@@ -118,6 +119,5 @@ int main(int argc, char* argv[])
 
 #endif
 
-    const std::string new_path = path + ".BLUR.BMP";
-    bmp.WriteToFile(new_path.c_str());
+    bmp.WriteToFile(output_path.c_str());
 }
