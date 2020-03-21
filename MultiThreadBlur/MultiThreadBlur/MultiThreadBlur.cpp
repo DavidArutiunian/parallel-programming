@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <windows.h>
+#include <chrono>
 
 #include "EasyBMP.h"
 
@@ -105,8 +106,14 @@ int main(int argc, char* argv[])
     const int cores = std::strtol(argv[4], nullptr, 10);
     const int blur_radius = std::strtol(argv[5], nullptr, 10);
 
+    const std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+
     BMP bmp;
     bmp.ReadFromFile(input_path.c_str());
+
+    std::cout << "Successfully read file \"" << input_path.c_str() << "\"" << std::endl;
+    std::cout << "Blurring with radius " << blur_radius << " in " << threads << " threads on " << cores << " cores" <<
+        std::endl;
 
     const int w = bmp.TellWidth();
     const int h = bmp.TellHeight();
@@ -149,6 +156,13 @@ int main(int argc, char* argv[])
 #endif
 
     bmp.WriteToFile(output_path.c_str());
+
+    std::cout << "Successfully saved file to \"" << output_path.c_str() << "\"" << std::endl;
+
+    const std::chrono::steady_clock::time_point now_time = std::chrono::steady_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - start_time).count();
+
+    std::cout << "Total duration: " << duration << "ms" << std::endl;
 
     return EXIT_SUCCESS;
 }
