@@ -1,10 +1,6 @@
-# Лабораторная работа №2.
+# [Лабораторная работа №2](https://docs.google.com/document/d/1bKzU4040KnjLZpV7aoj7n_0Ehrx8TJiWsrk2RRjCo3s/edit)
 
 ## Параллельная обработка непересекающихся данных
-
-#### ТЗ
-
-https://docs.google.com/document/d/1bKzU4040KnjLZpV7aoj7n_0Ehrx8TJiWsrk2RRjCo3s/edit
 
 #### Отчёт
 
