@@ -6,11 +6,20 @@
 #include <windows.h>
 #include <chrono>
 #include <string>
+#include <sstream>
+#include <vector>
 
 
 #include "EasyBMP.h"
 
 constexpr int MIN_SECTION_HEIGHT = 2;
+
+enum ThreadPriority
+{
+    BELOW_NORMAL = -1,
+    NORMAL,
+    ABOVE_NORMAL
+};
 
 struct ThreadData
 {
@@ -29,6 +38,18 @@ template <typename T>
 T safe_div(T a, T b) noexcept
 {
     return a / max(b, 1);
+}
+
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream token_stream(s);
+    while (std::getline(token_stream, token, delimiter))
+    {
+        tokens.push_back(token);
+    }
+    return tokens;
 }
 
 RGBApixel ApplyBlurForPixel(int i, int j, BMP& bmp, int blur_radius)
@@ -94,36 +115,36 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
 
 int main(int argc, char* argv[])
 {
-    if (argv[1] == nullptr)
+    if (argc < 1 || argv[1] == nullptr)
     {
         std::cerr << "You must specify input path" << std::endl;
         return EXIT_FAILURE;
     }
-    if (argv[2] == nullptr)
+    if (argc < 2 || argv[2] == nullptr)
     {
         std::cerr << "You must specify output path" << std::endl;
         return EXIT_FAILURE;
     }
-    if (argv[3] == nullptr)
+    if (argc < 3 || argv[3] == nullptr)
     {
         std::cerr << "You must specify threads count" << std::endl;
         return EXIT_FAILURE;
     }
-    if (argv[4] == nullptr)
+    if (argc < 4 || argv[4] == nullptr)
     {
         std::cerr << "You must specify cores count" << std::endl;
         return EXIT_FAILURE;
     }
-    if (argv[5] == nullptr)
+    if (argc < 5 || argv[5] == nullptr)
     {
         std::cerr << "You must specify blur radius" << std::endl;
         return EXIT_FAILURE;
     }
-	if (argv[6] == nullptr)
-	{
+    if (argc < 6 || argv[6] == nullptr)
+    {
         std::cerr << "Logging directory not specified. Setting to .\\Logs\\ by default";
         argv[6] = const_cast<char*>("Logs\\");
-	}
+    }
 
 
     const std::string input_path(argv[1]);
@@ -182,6 +203,56 @@ int main(int argc, char* argv[])
         << " cores"
         << std::endl;
 
+    ThreadPriority* priorities = new ThreadPriority[total_threads_count];
+    for (int i = 0; i < total_threads_count; i++)
+    {
+        priorities[i] = NORMAL;
+    }
+    if (argc < 7 || argv[7] == nullptr)
+    {
+        std::cerr << "Thread priorities not specified. Setting all to NORMAL" << std::endl;
+    }
+    else
+    {
+        std::vector<std::string> priority_string_map{
+            std::to_string(BELOW_NORMAL),
+            std::to_string(NORMAL),
+            std::to_string(ABOVE_NORMAL)
+        };
+        const auto priority_strings = split(std::string(argv[7]), ',');
+        if (priority_strings.size() != static_cast<std::size_t>(total_threads_count))
+        {
+            std::cerr
+                << "List of priorities does not match threads count. Setting rest of threads to NORMAL"
+                << std::endl;
+        }
+        for (std::size_t i = 0; i < priority_strings.size(); i++)
+        {
+            const auto& priority = priority_strings.at(i);
+            if (priority == priority_string_map.at(BELOW_NORMAL + 1))
+            {
+                priorities[i] = BELOW_NORMAL;
+            }
+            else if (priority == priority_string_map.at(NORMAL + 1))
+            {
+                priorities[i] = NORMAL;
+            }
+            else if (priority == priority_string_map.at(ABOVE_NORMAL + 1))
+            {
+                priorities[i] = ABOVE_NORMAL;
+            }
+            else
+            {
+                std::cerr
+                    << "Error at priority[" + std::to_string(i) + "]."
+                    << " Unknown value."
+                    << " Should be one of -1(BELOW_NORMAL),0(NORMAL),1(ABOVE_NORMAL)"
+                    << std::endl;
+                priorities[i] = NORMAL;
+            }
+        }
+    }
+
     std::ofstream* loggers = new std::ofstream[total_threads_count];
     ThreadData* params = new ThreadData[total_threads_count];
     HANDLE* handles = new HANDLE[total_threads_count];
@@ -207,6 +278,11 @@ int main(int argc, char* argv[])
             std::cerr << "Error occured when setting affinity mask" << std::endl;
             return EXIT_FAILURE;
         }
+        if (!SetThreadPriority(handles[i], priorities[i]))
+        {
+            std::cerr << "Error occured when setting thread priority" << std::endl;
+            return EXIT_FAILURE;
+        }
     }
 
     for (int i = 0; i < total_threads_count; i++)
@@ -216,6 +292,7 @@ int main(int argc, char* argv[])
 
     WaitForMultipleObjects(total_threads_count, handles, true, INFINITE);
 
+    delete[] priorities;
     delete[] params;
     delete[] loggers;
     delete[] handles;
