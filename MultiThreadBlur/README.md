@@ -6,6 +6,18 @@
 
 https://docs.google.com/spreadsheets/d/1ZxLhPMk5K-T6OWGnKVMh8ZQWzQffaMhx0PNPPA8bjI0/edit?usp=sharing
 
+------
+
+# [Лабораторная работа №4](https://docs.google.com/document/d/1kCOQdaPe1Ulq0fYE9KniMat1-Wv8IB47ZowNGwIzwMk/edit)
+
+#### Отчёт
+
+https://docs.google.com/spreadsheets/d/1ZxLhPMk5K-T6OWGnKVMh8ZQWzQffaMhx0PNPPA8bjI0/edit?usp=sharing
+
+------
+
+# Инструкции
+
 #### Запуск test.bat
 
 ```bash
@@ -27,8 +39,23 @@ $ ./MultiThreadBlur_x(32|64).exe \
     <количество потоков> \
     <количество ядер процессора> \
     <радиус размытия> \
-    <путь к папке логирования (по умлочанию ./Logs/)>
+    <путь к папке логирования (по умлочанию ./Logs/)> \
+    <приоритеты потоков через запятую (например -1,-1,0,0,1,1...)>
 ```
+
+##### Примечание!
+
+Разбор аргументов происходит по индексу, соответственно, чтобы указать необходимый аргумент нужно так-же указать все аргументы до необходимого
+
+#### Таблица поддерживаемых приоритетов потоков
+
+Используется `Win32` метод [SetThreadPriority](https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority), принимающий следующие значения:
+
+| Приоритет | Значение     |
+| --------- | ------------ |
+| -1        | BELOW_NORMAL |
+| 0         | NORMAL       |
+| 1         | ABOVE_NORMAL |
 
 #### Известные ограничения
 
@@ -41,4 +68,4 @@ $ ./MultiThreadBlur_x(32|64).exe \
 #### Библиотеки и API
 
 - [EasyBMP](http://easybmp.sourceforge.net/)
-- WinAPI
+- [WinAPI](https://docs.microsoft.com/en-us/windows/win32/)
