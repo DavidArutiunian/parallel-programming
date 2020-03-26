@@ -5,6 +5,8 @@
 #include <fstream>
 #include <windows.h>
 #include <chrono>
+#include <string>
+
 
 #include "EasyBMP.h"
 
@@ -13,12 +15,21 @@ constexpr int MIN_SECTION_HEIGHT = 2;
 struct ThreadData
 {
     BMP* bmp;
+    std::ostream* logger;
+    const std::chrono::steady_clock::time_point* process_start;
+    int index;
     int top;
     int left;
     int width;
     int height;
     int blur_radius;
 };
+
+template <typename T>
+T safe_div(T a, T b) noexcept
+{
+    return a / max(b, 1);
+}
 
 RGBApixel ApplyBlurForPixel(int i, int j, BMP& bmp, int blur_radius)
 {
@@ -48,9 +59,9 @@ RGBApixel ApplyBlurForPixel(int i, int j, BMP& bmp, int blur_radius)
         }
     }
     return RGBApixel{
-        static_cast<ebmpBYTE>(b / count),
-        static_cast<ebmpBYTE>(g / count),
-        static_cast<ebmpBYTE>(r / count),
+        static_cast<ebmpBYTE>(safe_div(b, count)),
+        static_cast<ebmpBYTE>(safe_div(g, count)),
+        static_cast<ebmpBYTE>(safe_div(r, count)),
         main_pixel.Alpha
     };
 }
@@ -59,6 +70,9 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
 {
     const ThreadData* data = static_cast<ThreadData*>(lp_param);
     BMP* bmp = data->bmp;
+    std::ostream* logger = data->logger;
+    const std::chrono::steady_clock::time_point* process_start = data->process_start;
+    const int thread_index = data->index;
     const int top = data->top;
     const int left = data->left;
     const int width = data->width;
@@ -70,6 +84,9 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
         {
             const RGBApixel blurred_pixel = ApplyBlurForPixel(i, j, *bmp, blur_radius);
             bmp->SetPixel(i, j, blurred_pixel);
+            const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+            const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - *process_start).count();
+            *logger << thread_index << ' ' << duration << std::endl;
         }
     }
     ExitThread(0);
@@ -102,6 +119,11 @@ int main(int argc, char* argv[])
         std::cerr << "You must specify blur radius" << std::endl;
         return EXIT_FAILURE;
     }
+	if (argv[6] == nullptr)
+	{
+        std::cerr << "Logging directory not specified. Setting to .\\Logs\\ by default";
+        argv[6] = const_cast<char*>("Logs\\");
+	}
 
 
     const std::string input_path(argv[1]);
@@ -110,7 +132,7 @@ int main(int argc, char* argv[])
     const int cores = std::strtol(argv[4], nullptr, 10);
     const int blur_radius = std::strtol(argv[5], nullptr, 10);
 
-    const std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+    const std::chrono::steady_clock::time_point process_start = std::chrono::steady_clock::now();
 
     BMP bmp;
     bmp.ReadFromFile(input_path.c_str());
@@ -160,14 +182,19 @@ int main(int argc, char* argv[])
         << " cores"
         << std::endl;
 
+    std::ofstream* loggers = new std::ofstream[total_threads_count];
     ThreadData* params = new ThreadData[total_threads_count];
     HANDLE* handles = new HANDLE[total_threads_count];
     for (int i = 0; i < total_threads_count; i++)
     {
         const int top = i * section_height;
         const bool is_last = i == total_threads_count - 1;
+        loggers[i] = std::ofstream(std::string(argv[6]) + "thread_" + std::to_string(i) + ".log");
         params[i] = ThreadData{
             &bmp,
+            &loggers[i],
+            &process_start,
+            i,
             top,
             0,
             w,
@@ -190,6 +217,7 @@ int main(int argc, char* argv[])
     WaitForMultipleObjects(total_threads_count, handles, true, INFINITE);
 
     delete[] params;
+    delete[] loggers;
     delete[] handles;
 
 #endif
@@ -198,8 +226,8 @@ int main(int argc, char* argv[])
 
     std::cout << "Successfully saved file to \"" << output_path.c_str() << "\"" << std::endl;
 
-    const std::chrono::steady_clock::time_point now_time = std::chrono::steady_clock::now();
-    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - start_time).count();
+    const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - process_start).count();
 
     std::cout << "Total duration: " << duration << "ms" << std::endl;
 
