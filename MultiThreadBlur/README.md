@@ -12,7 +12,7 @@ https://docs.google.com/spreadsheets/d/1ZxLhPMk5K-T6OWGnKVMh8ZQWzQffaMhx0PNPPA8b
 
 #### Отчёт
 
-https://docs.google.com/spreadsheets/d/1ZxLhPMk5K-T6OWGnKVMh8ZQWzQffaMhx0PNPPA8bjI0/edit?usp=sharing
+https://1drv.ms/x/s!AiyxKhcZ2MhC0zQv_LcLXLC_1In9?e=u0TCfA
 
 ------
 
