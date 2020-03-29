@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 
+constexpr bool USE_CRITICAL_SECTION = false;
 constexpr int THREADS_COUNT = 2;
 constexpr int CORES_COUNT = 2;
 constexpr int CYCLES_COUNT = 100'000;
@@ -10,7 +11,10 @@ CRITICAL_SECTION CriticalSection;
 
 DWORD WINAPI ThreadProc(CONST LPVOID lp_param)
 {
-    EnterCriticalSection(&CriticalSection);
+    if (USE_CRITICAL_SECTION)
+    {
+        EnterCriticalSection(&CriticalSection);
+    }
 
     int* working_variable = static_cast<int*>(lp_param);
 
@@ -22,7 +26,10 @@ DWORD WINAPI ThreadProc(CONST LPVOID lp_param)
 
     std::cout << *working_variable << std::endl;
 
-    LeaveCriticalSection(&CriticalSection);
+    if (USE_CRITICAL_SECTION)
+    {
+        LeaveCriticalSection(&CriticalSection);
+    }
 
     ExitThread(0);
 }
@@ -32,7 +39,7 @@ int main(int argc, char* argv[])
 {
     int working_variable = 0;
 
-    if (!InitializeCriticalSectionAndSpinCount(&CriticalSection, 0x00000400))
+    if (USE_CRITICAL_SECTION && !InitializeCriticalSectionAndSpinCount(&CriticalSection, 0x00000400))
     {
         std::cerr << "Cannot initialize critical section" << std::endl;
         return EXIT_FAILURE;
@@ -60,7 +67,10 @@ int main(int argc, char* argv[])
 
     delete[] handles;
 
-    DeleteCriticalSection(&CriticalSection);
+    if (USE_CRITICAL_SECTION)
+    {
+        DeleteCriticalSection(&CriticalSection);
+    }
 
     return EXIT_SUCCESS;
 }
