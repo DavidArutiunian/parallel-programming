@@ -10,6 +10,8 @@ https://docs.google.com/spreadsheets/d/1ZxLhPMk5K-T6OWGnKVMh8ZQWzQffaMhx0PNPPA8b
 
 # [Лабораторная работа №4](https://docs.google.com/document/d/1kCOQdaPe1Ulq0fYE9KniMat1-Wv8IB47ZowNGwIzwMk/edit)
 
+## Планировщик ОС. Приоритеты потоков. Углубленный уровень.
+
 #### Отчёт
 
 https://1drv.ms/x/s!AiyxKhcZ2MhC0zQv_LcLXLC_1In9?e=u0TCfA
