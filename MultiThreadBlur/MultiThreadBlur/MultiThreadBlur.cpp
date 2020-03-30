@@ -9,7 +9,7 @@
 #include <sstream>
 #include <vector>
 
-
+#include "LogBuffer.h"
 #include "EasyBMP.h"
 
 constexpr int MIN_SECTION_HEIGHT = 2;
@@ -24,6 +24,7 @@ enum ThreadPriority
 struct ThreadData
 {
     BMP* bmp;
+    LogBuffer* log_buffer;
     std::ostream* logger;
     const std::chrono::steady_clock::time_point* process_start;
     int index;
@@ -92,6 +93,7 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
     const ThreadData* data = static_cast<ThreadData*>(lp_param);
     BMP* bmp = data->bmp;
     std::ostream* logger = data->logger;
+    LogBuffer* log_buffer = data->log_buffer;
     const std::chrono::steady_clock::time_point* process_start = data->process_start;
     const int thread_index = data->index;
     const int top = data->top;
@@ -108,10 +110,13 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
             const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
             const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - *process_start).count();
             *logger << thread_index << ' ' << duration << std::endl;
+            log_buffer->Append(std::string(std::to_string(thread_index) + ' ' + std::to_string(duration) + '\n').c_str());
         }
     }
     ExitThread(0);
 }
+
+#if !ENABLE_TESTS
 
 int main(int argc, char* argv[])
 {
@@ -203,7 +208,7 @@ int main(int argc, char* argv[])
         << " cores"
         << std::endl;
 
-    ThreadPriority* priorities = new ThreadPriority[total_threads_count];
+    auto* priorities = new ThreadPriority[total_threads_count];
     for (int i = 0; i < total_threads_count; i++)
     {
         priorities[i] = NORMAL;
@@ -253,9 +258,10 @@ int main(int argc, char* argv[])
         }
     }
 
-    std::ofstream* loggers = new std::ofstream[total_threads_count];
-    ThreadData* params = new ThreadData[total_threads_count];
-    HANDLE* handles = new HANDLE[total_threads_count];
+    auto* log_buffer = new LogBuffer();
+    auto* loggers = new std::ofstream[total_threads_count];
+    auto* params = new ThreadData[total_threads_count];
+    auto* handles = new HANDLE[total_threads_count];
     for (int i = 0; i < total_threads_count; i++)
     {
         const int top = i * section_height;
@@ -263,6 +269,7 @@ int main(int argc, char* argv[])
         loggers[i] = std::ofstream(std::string(argv[6]) + "thread_" + std::to_string(i) + ".log");
         params[i] = ThreadData{
             &bmp,
+            log_buffer,
             &loggers[i],
             &process_start,
             i,
@@ -296,6 +303,7 @@ int main(int argc, char* argv[])
     delete[] params;
     delete[] loggers;
     delete[] handles;
+    delete log_buffer;
 
 #endif
 
@@ -310,3 +318,5 @@ int main(int argc, char* argv[])
 
     return EXIT_SUCCESS;
 }
+
+#endif
