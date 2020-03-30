@@ -5,9 +5,6 @@
 #include "LogFileWriter.h"
 #include "LinkedList.h"
 
-#define ENABLE_TESTS true
-#define LOG_BUFFER_TEST ENABLE_TESTS
-
 class LogBuffer
 {
 public:
@@ -49,10 +46,4 @@ private:
     const char* PopMessage();
 
     static DWORD WINAPI ThreadFunc(CONST LPVOID lp_param);
-
-#if LINKED_LIST_TEST
-
-    friend int main();
-
-#endif
 };

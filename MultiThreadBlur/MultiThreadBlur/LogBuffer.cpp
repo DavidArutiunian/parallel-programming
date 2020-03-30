@@ -1,11 +1,10 @@
 #include <stdexcept>
 #include <cstddef>
-#include <cassert>
 #include <iostream>
+#include <string>
 
 #include "LogBuffer.h"
-
-#include <string>
+#include "catch.hpp"
 
 LogBuffer::LogBuffer(LogFileWriter* file_writer)
     : file_writer(file_writer),
@@ -129,84 +128,86 @@ DWORD WINAPI LogBuffer::ThreadFunc(CONST LPVOID lp_param)
     ExitThread(EXIT_SUCCESS);
 }
 
-#if LOG_BUFFER_TEST
-
-class TestLogFileWriter : public LogFileWriter
+SCENARIO("LogBuffer")
 {
-public:
-    char** buffer = nullptr;
-
-    virtual void Write(char** buffer, std::size_t size) override
+    class TestLogFileWriter : public LogFileWriter
     {
-        const auto buffer_memory_size = size * sizeof(char*);
-        this->buffer = static_cast<char**>(malloc(buffer_memory_size));
-        for (std::size_t i = 0; i < size; i++)
-        {
-            const char* message = buffer[i];
-            const auto message_memory_size = strlen(message) * sizeof(char);
-            this->buffer[i] = static_cast<char*>(malloc(message_memory_size));
-            strcpy(this->buffer[i], buffer[i]);
-        }
-    }
-};
+    public:
+        char** buffer = nullptr;
 
-int main()
-{
+        virtual void Write(char** buffer, std::size_t size) override
+        {
+            const auto buffer_memory_size = size * sizeof(char*);
+            this->buffer = static_cast<char**>(malloc(buffer_memory_size));
+            for (std::size_t i = 0; i < size; i++)
+            {
+                const char* message = buffer[i];
+                const auto message_memory_size = strlen(message) * sizeof(char);
+                this->buffer[i] = static_cast<char*>(malloc(message_memory_size));
+                strcpy(this->buffer[i], buffer[i]);
+            }
+        }
+    };
+
+    GIVEN("A test LogFileWriter implementation")
     {
         TestLogFileWriter file_writer;
-        LogBuffer log_buffer(&file_writer);
+        LogBuffer* log_buffer = new LogBuffer(&file_writer);
 
-        for (std::size_t i = 0; i <= LogBuffer::MAX_SIZE; i++)
+        WHEN("257 messages have been appended")
         {
-            log_buffer.Append(std::to_string(i).c_str());
-        }
-
-        for (std::size_t i = 0; i < LogBuffer::MAX_SIZE; i++)
-        {
-            char* message = file_writer.buffer[i];
-            assert(strcmp(message, std::to_string(i).c_str()) == 0);
-        }
-
-        for (std::size_t i = 0; i <= LogBuffer::MAX_SIZE; i++)
-        {
-            log_buffer.Append(std::to_string(i).c_str());
-        }
-
-        for (std::size_t i = 0; i < LogBuffer::MAX_SIZE; i++)
-        {
-            char* message = file_writer.buffer[i];
-            assert(strcmp(message, std::to_string(i).c_str()) == 0);
-        }
-    }
-
-    {
-        TestLogFileWriter file_writer;
-        {
-            LogBuffer log_buffer(&file_writer);
-
-            for (std::size_t i = 0; i <= LogBuffer::MAX_SIZE; i++)
+            for (std::size_t i = 0; i <= 256; i++)
             {
-                log_buffer.Append(std::to_string(i).c_str());
+                log_buffer->Append(std::to_string(i).c_str());
             }
 
-            for (std::size_t i = 0; i < LogBuffer::MAX_SIZE; i++)
+            THEN("LogFileWriter contains array of numeric strings from 0 to 256")
             {
-                char* message = file_writer.buffer[i];
-                assert(strcmp(message, std::to_string(i).c_str()) == 0);
+                for (std::size_t i = 0; i < 256; i++)
+                {
+                    char* message = file_writer.buffer[i];
+                    REQUIRE(strcmp(message, std::to_string(i).c_str()) == 0);
+                }
             }
 
-            for (std::size_t i = 0; i <= LogBuffer::MAX_SIZE / 2; i++)
+            AND_WHEN("More 257 messages have been appended")
             {
-                log_buffer.Append(std::to_string(i).c_str());
-            }
-        }
+                for (std::size_t i = 0; i <= 256; i++)
+                {
+                    log_buffer->Append(std::to_string(i).c_str());
+                }
 
-        for (std::size_t i = 0; i < LogBuffer::MAX_SIZE / 2; i++)
-        {
-            char* message = file_writer.buffer[i];
-            assert(strcmp(message, std::to_string(i).c_str()) == 0);
+                THEN("LogFileWriter container another array of numeric strings from 0 to 256")
+                {
+                    for (std::size_t i = 0; i < 256; i++)
+                    {
+                        char* message = file_writer.buffer[i];
+                        REQUIRE(strcmp(message, std::to_string(i).c_str()) == 0);
+                    }
+                }
+            }
+
+            AND_WHEN("Only 256 / 2 new messages have been appended")
+            {
+                for (std::size_t i = 0; i <= 256 / 2; i++)
+                {
+                    log_buffer->Append(std::to_string(i).c_str());
+                }
+
+                AND_WHEN("Destructor is called")
+                {
+                    delete log_buffer;
+
+                    THEN("LogFileWriter contains rest of messages")
+                    {
+                        for (std::size_t i = 0; i < 256 / 2; i++)
+                        {
+                            char* message = file_writer.buffer[i];
+                            assert(strcmp(message, std::to_string(i).c_str()) == 0);
+                        }
+                    }
+                }
+            }
         }
     }
 }
-
-#endif

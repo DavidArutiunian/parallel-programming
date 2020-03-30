@@ -1,8 +1,8 @@
 #include <cstring>
 #include <cstddef>
-#include <cassert>
 #include <cstdlib>
 
+#include "catch.hpp"
 #include "LinkedList.h"
 
 LinkedList::LinkedList(): head(nullptr), size(0)
@@ -58,61 +58,183 @@ std::size_t LinkedList::Size() const
     return size;
 }
 
-#if LINKED_LIST_TEST
-
-int main()
+SCENARIO("LinkedList")
 {
-    LinkedList list;
-
-    assert(list.head == nullptr);
-    assert(list.size == 0);
-
-    list.Add("Hello, World!");
-
-    assert(strcmp(list.head->message, "Hello, World!") == 0);
-    assert(list.head->next == nullptr);
-    assert(list.size == 1);
-
-    const auto* prev = list.head;
-
-    list.Add("Who am I?");
-
-    assert(strcmp(list.head->message, "Who am I?") == 0);
-    assert(list.head->next == prev);
-    assert(list.size == 2);
-
-    assert(strcmp(list.Pop(), "Who am I?") == 0);
-    assert(list.size == 1);
-
-    assert(strcmp(list.Pop(), "Hello, World!") == 0);
-    assert(list.size == 0);
-
-    list.Add("Hello, World!");
-    list.Add("Who am I?");
-    list.Clear();
-
-    assert(list.size == 0);
-    assert(list.head == nullptr);
-
-    for (int i = 0; i < 5; i++)
+    GIVEN("An empty LinkedList")
     {
-        list.Add(std::to_string(i).c_str());
+        LinkedList list;
+
+        REQUIRE(list.Size() == 0);
+
+        WHEN("Message has been added")
+        {
+            list.Add("Hello, World!");
+
+            THEN("Size is 1")
+            {
+                REQUIRE(list.Size() == 1);
+            }
+
+            AND_THEN("HasNext is true")
+            {
+                REQUIRE(list.HasNext() == true);
+            }
+
+            AND_WHEN("Message has been popped")
+            {
+                const char* message = list.Pop();
+
+                THEN("Message equals to \"Hello, World!\"")
+                {
+                    REQUIRE(strcmp(message, "Hello, World!") == 0);
+                }
+
+                AND_THEN("Size is 0")
+                {
+                    REQUIRE(list.Size() == 0);
+                }
+
+                AND_THEN("HasNext is false")
+                {
+                    REQUIRE(list.HasNext() == false);
+                }
+            }
+        }
     }
-    assert(strcmp(list.Pop(), "4") == 0);
-    assert(strcmp(list.Pop(), "3") == 0);
-    assert(strcmp(list.Pop(), "2") == 0);
-    assert(strcmp(list.Pop(), "1") == 0);
-    assert(strcmp(list.Pop(), "0") == 0);
 
-    assert(list.HasNext() == false);
+    AND_GIVEN("LinkedList of 5 elements")
+    {
+        LinkedList list;
 
-    list.Add("Hello, World!");
-    assert(list.HasNext() == true);
+        for (std::size_t i = 0; i < 5; i++)
+        {
+            list.Add(std::to_string(i).c_str());
+        }
 
-    list.Pop();
-    assert(list.HasNext() == false);
 
-    return EXIT_SUCCESS;
+        WHEN("First pop")
+        {
+            const char* message = list.Pop();
+
+            THEN("Message equals to \"4\"")
+            {
+                REQUIRE(strcmp(message, "4") == 0);
+            }
+
+            AND_THEN("Size is 4")
+            {
+                REQUIRE(list.Size() == 4);
+            }
+
+            AND_THEN("HasNext is true")
+            {
+                REQUIRE(list.HasNext() == true);
+            }
+
+            AND_WHEN("Second pop")
+            {
+                const char* message = list.Pop();
+
+                THEN("Message equals to \"3\"")
+                {
+                    REQUIRE(strcmp(message, "3") == 0);
+                }
+
+                AND_THEN("Size is 3")
+                {
+                    REQUIRE(list.Size() == 3);
+                }
+
+                AND_THEN("HasNext is true")
+                {
+                    REQUIRE(list.HasNext() == true);
+                }
+
+                AND_WHEN("Third pop")
+                {
+                    const char* message = list.Pop();
+
+                    THEN("Message equals to  \"2\"")
+                    {
+                        REQUIRE(strcmp(message, "2") == 0);
+                    }
+
+                    AND_THEN("Size is 2")
+                    {
+                        REQUIRE(list.Size() == 2);
+                    }
+
+                    AND_THEN("HasNext is true")
+                    {
+                        REQUIRE(list.HasNext() == true);
+                    }
+
+                    AND_WHEN("Fourth pop")
+                    {
+                        const char* message = list.Pop();
+
+                        THEN("Message equals to \"1\"")
+                        {
+                            REQUIRE(strcmp(message, "1") == 0);
+                        }
+
+                        AND_THEN("Size is 1")
+                        {
+                            REQUIRE(list.Size() == 1);
+                        }
+
+                        AND_THEN("HasNext is true")
+                        {
+                            REQUIRE(list.HasNext() == true);
+                        }
+
+                        AND_WHEN("Fifth pop")
+                        {
+                            const char* message = list.Pop();
+
+                            THEN("Message equals to  \"0\"")
+                            {
+                                REQUIRE(strcmp(message, "0") == 0);
+                            }
+
+                            AND_THEN("Size is 0")
+                            {
+                                REQUIRE(list.Size() == 0);
+                            }
+
+                            AND_THEN("HasNext is false")
+                            {
+                                REQUIRE(list.HasNext() == false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AND_GIVEN("LinkedList of 5 elements")
+    {
+        LinkedList list;
+
+        for (std::size_t i = 0; i < 5; i++)
+        {
+            list.Add(std::to_string(i).c_str());
+        }
+
+        WHEN("List has been cleared")
+        {
+            list.Clear();
+
+            THEN("List size is 0")
+            {
+                REQUIRE(list.Size() == 0);
+            }
+
+            AND_THEN("HasNext is false")
+            {
+                REQUIRE(list.HasNext() == false);
+            }
+        }
+    }
 }
-
-#endif

@@ -1,8 +1,5 @@
 #pragma once
 
-#define ENABLE_TESTS false
-#define LINKED_LIST_TEST ENABLE_TESTS
-
 class LinkedList
 {
     struct Node
@@ -37,10 +34,4 @@ public:
 private:
     Node* head;
     std::size_t size;
-
-#if LINKED_LIST_TEST
-
-    friend int main();
-
-#endif
 };
