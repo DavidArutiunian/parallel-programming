@@ -18,6 +18,12 @@ https://1drv.ms/x/s!AiyxKhcZ2MhC0zQv_LcLXLC_1In9?e=u0TCfA
 
 ------
 
+# [Лабораторная работа №6](https://docs.google.com/document/d/1vYGR3kaCmzW6saQIamrkiq_POzukts2Nn6H8iy0sDmA/edit)
+
+## Примитивы синхронизации данных. Критические секции. События.
+
+------
+
 # Инструкции
 
 #### Запуск test.bat
