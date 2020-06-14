@@ -152,13 +152,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="EasyBMP.cpp" />
+    <ClCompile Include="LinkedList.cpp" />
+    <ClCompile Include="LogBuffer.cpp" />
+    <ClCompile Include="LogFileWriter.cpp" />
     <ClCompile Include="MultiThreadBlur.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="catch.hpp" />
     <ClInclude Include="EasyBMP.h" />
     <ClInclude Include="EasyBMP_BMP.h" />
     <ClInclude Include="EasyBMP_DataStructures.h" />
     <ClInclude Include="EasyBMP_VariousBMPutilities.h" />
+    <ClInclude Include="LogFileWriter.h" />
+    <ClInclude Include="LogBuffer.h" />
+    <ClInclude Include="LinkedList.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

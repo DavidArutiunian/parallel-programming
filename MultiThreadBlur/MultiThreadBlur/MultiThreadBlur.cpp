@@ -1,5 +1,7 @@
-#define DEBUG false
-#define _USE_MATH_DEFINES
+#define NO_THREADS false
+
+#define CATCH_CONFIG_RUNNER true
+#include "catch.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -9,7 +11,8 @@
 #include <sstream>
 #include <vector>
 
-
+#include "LogBuffer.h"
+#include "LogFileWriter.h"
 #include "EasyBMP.h"
 
 constexpr int MIN_SECTION_HEIGHT = 2;
@@ -24,6 +27,7 @@ enum ThreadPriority
 struct ThreadData
 {
     BMP* bmp;
+    LogBuffer* log_buffer;
     std::ostream* logger;
     const std::chrono::steady_clock::time_point* process_start;
     int index;
@@ -37,7 +41,7 @@ struct ThreadData
 template <typename T>
 T safe_div(T a, T b) noexcept
 {
-    return a / max(b, 1);
+    return a / std::max(b, 1);
 }
 
 std::vector<std::string> split(const std::string& s, char delimiter)
@@ -92,6 +96,7 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
     const ThreadData* data = static_cast<ThreadData*>(lp_param);
     BMP* bmp = data->bmp;
     std::ostream* logger = data->logger;
+    LogBuffer* log_buffer = data->log_buffer;
     const std::chrono::steady_clock::time_point* process_start = data->process_start;
     const int thread_index = data->index;
     const int top = data->top;
@@ -108,10 +113,14 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
             const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
             const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - *process_start).count();
             *logger << thread_index << ' ' << duration << std::endl;
+            log_buffer->Append(
+                std::string(std::to_string(thread_index) + ' ' + std::to_string(duration) + '\n').c_str());
         }
     }
     ExitThread(0);
 }
+
+#if !CATCH_CONFIG_RUNNER
 
 int main(int argc, char* argv[])
 {
@@ -142,7 +151,7 @@ int main(int argc, char* argv[])
     }
     if (argc < 6 || argv[6] == nullptr)
     {
-        std::cerr << "Logging directory not specified. Setting to .\\Logs\\ by default";
+        std::cerr << "Logging directory not specified. Setting to .\\Logs\\ by default" << std::endl;
         argv[6] = const_cast<char*>("Logs\\");
     }
 
@@ -178,9 +187,9 @@ int main(int argc, char* argv[])
 
     const DWORD_PTR affinity_mask = (1 << cores) - 1;
 
-    const int section_height = max(h / threads, MIN_SECTION_HEIGHT);
-    const int total_threads_count = min(threads, h / section_height);
-    const int rest = max(h - (threads * section_height), 0);
+    const int section_height = std::max(h / threads, MIN_SECTION_HEIGHT);
+    const int total_threads_count = std::min(threads, h / section_height);
+    const int rest = std::max(h - (threads * section_height), 0);
 
     if (threads > h / section_height)
     {
@@ -203,7 +212,7 @@ int main(int argc, char* argv[])
         << " cores"
         << std::endl;
 
-    ThreadPriority* priorities = new ThreadPriority[total_threads_count];
+    auto* priorities = new ThreadPriority[total_threads_count];
     for (int i = 0; i < total_threads_count; i++)
     {
         priorities[i] = NORMAL;
@@ -253,9 +262,11 @@ int main(int argc, char* argv[])
         }
     }
 
-    std::ofstream* loggers = new std::ofstream[total_threads_count];
-    ThreadData* params = new ThreadData[total_threads_count];
-    HANDLE* handles = new HANDLE[total_threads_count];
+    auto* log_file_writer = new LogFileWriter(std::string(argv[6]) + "log_file_writer.log");
+    auto* log_buffer = new LogBuffer(log_file_writer);
+    auto* loggers = new std::ofstream[total_threads_count];
+    auto* params = new ThreadData[total_threads_count];
+    auto* handles = new HANDLE[total_threads_count];
     for (int i = 0; i < total_threads_count; i++)
     {
         const int top = i * section_height;
@@ -263,6 +274,7 @@ int main(int argc, char* argv[])
         loggers[i] = std::ofstream(std::string(argv[6]) + "thread_" + std::to_string(i) + ".log");
         params[i] = ThreadData{
             &bmp,
+            log_buffer,
             &loggers[i],
             &process_start,
             i,
@@ -296,6 +308,7 @@ int main(int argc, char* argv[])
     delete[] params;
     delete[] loggers;
     delete[] handles;
+    delete log_buffer;
 
 #endif
 
@@ -310,3 +323,16 @@ int main(int argc, char* argv[])
 
     return EXIT_SUCCESS;
 }
+
+#else
+
+constexpr int ARGC = 1;
+
+int main()
+{
+    const char* argv[ARGC] = {"MultiThreadBlurTests"};
+    const int result = Catch::Session().run(ARGC, argv);
+    return result;
+}
+
+#endif
