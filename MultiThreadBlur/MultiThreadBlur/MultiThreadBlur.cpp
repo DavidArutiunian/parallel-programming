@@ -1,6 +1,6 @@
 #define NO_THREADS false
 
-#define CATCH_CONFIG_RUNNER false
+#define CATCH_CONFIG_RUNNER true
 #include "catch.hpp"
 
 #include <iostream>
@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "LogBuffer.h"
+#include "LogFileWriter.h"
 #include "EasyBMP.h"
 
 constexpr int MIN_SECTION_HEIGHT = 2;
@@ -150,7 +151,7 @@ int main(int argc, char* argv[])
     }
     if (argc < 6 || argv[6] == nullptr)
     {
-        std::cerr << "Logging directory not specified. Setting to .\\Logs\\ by default";
+        std::cerr << "Logging directory not specified. Setting to .\\Logs\\ by default" << std::endl;
         argv[6] = const_cast<char*>("Logs\\");
     }
 
@@ -261,7 +262,8 @@ int main(int argc, char* argv[])
         }
     }
 
-    auto* log_buffer = new LogBuffer(nullptr);
+    auto* log_file_writer = new LogFileWriter(std::string(argv[6]) + "log_file_writer.log");
+    auto* log_buffer = new LogBuffer(log_file_writer);
     auto* loggers = new std::ofstream[total_threads_count];
     auto* params = new ThreadData[total_threads_count];
     auto* handles = new HANDLE[total_threads_count];

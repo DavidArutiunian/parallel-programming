@@ -154,6 +154,7 @@
     <ClCompile Include="EasyBMP.cpp" />
     <ClCompile Include="LinkedList.cpp" />
     <ClCompile Include="LogBuffer.cpp" />
+    <ClCompile Include="LogFileWriter.cpp" />
     <ClCompile Include="MultiThreadBlur.cpp" />
   </ItemGroup>
   <ItemGroup>

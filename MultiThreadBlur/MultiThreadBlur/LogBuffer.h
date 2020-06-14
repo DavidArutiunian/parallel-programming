@@ -45,5 +45,5 @@ private:
 
     const char* PopMessage();
 
-    static DWORD WINAPI ThreadFunc(CONST LPVOID lp_param);
+    static DWORD WINAPI LogSizeMonitoringThread(CONST LPVOID lp_param);
 };

@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdexcept>
 #include <cstddef>
 #include <iostream>
@@ -71,7 +73,7 @@ void LogBuffer::Clear()
 
 void LogBuffer::StartThread()
 {
-    thread_handle = CreateThread(nullptr, 0, &ThreadFunc, static_cast<void*>(this), 0, nullptr);
+    thread_handle = CreateThread(nullptr, 0, &LogSizeMonitoringThread, static_cast<void*>(this), 0, nullptr);
 }
 
 void LogBuffer::NotifyThread()
@@ -99,7 +101,7 @@ const char* LogBuffer::PopMessage()
     return result;
 }
 
-DWORD WINAPI LogBuffer::ThreadFunc(CONST LPVOID lp_param)
+DWORD WINAPI LogBuffer::LogSizeMonitoringThread(CONST LPVOID lp_param)
 {
     LogBuffer* context = static_cast<LogBuffer*>(lp_param);
     const DWORD wait_result = WaitForSingleObject(context->write_event, INFINITE);
