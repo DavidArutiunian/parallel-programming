@@ -12,6 +12,7 @@
 #include <tuple>
 
 #include "EasyBMP.h"
+#include "ThreadPool.h"
 
 constexpr int MIN_SECTION_HEIGHT = 2;
 constexpr int BLUR_RADIUS = 5;
@@ -90,6 +91,7 @@ DWORD WINAPI ThreadFunc(CONST LPVOID lp_param)
     const int width = data->width;
     const int height = data->height;
     const int blur_radius = data->blur_radius;
+
     for (int i = left; i < left + width; i++)
     {
         for (int j = top; j < top + height; j++)
@@ -171,79 +173,88 @@ int main(int argc, char* argv[])
         file_paths.push_back(zipped);
     }
 
-    if (mode == "thread")
+    for (auto&& zip : file_paths)
     {
-        for (auto&& zip : file_paths)
+        std::string input_path, output_path;
+        std::tie(input_path, output_path) = zip;
+
+        BMP bmp;
+        bmp.ReadFromFile(input_path.c_str());
+
+        std::cout << "Successfully read file \"" << input_path.c_str() << "\"" << std::endl;
+
+        const int w = bmp.TellWidth();
+        const int h = bmp.TellHeight();
+
+
+        const int section_height = max(h / threads_count, MIN_SECTION_HEIGHT);
+        const int total_threads_count = min(threads_count, h / section_height);
+        const int rest = max(h - (threads_count * section_height), 0);
+
+        if (threads_count > h / section_height)
         {
-            std::string input_path, output_path;
-            std::tie(input_path, output_path) = zip;
-
-            BMP bmp;
-            bmp.ReadFromFile(input_path.c_str());
-
-            std::cout << "Successfully read file \"" << input_path.c_str() << "\"" << std::endl;
-
-            const int w = bmp.TellWidth();
-            const int h = bmp.TellHeight();
-
-
-            const int section_height = max(h / threads_count, MIN_SECTION_HEIGHT);
-            const int total_threads_count = min(threads_count, h / section_height);
-            const int rest = max(h - (threads_count * section_height), 0);
-
-            if (threads_count > h / section_height)
-            {
-                std::cerr
-                    << "Warning! Cannot have more than "
-                    << total_threads_count
-                    << " threads for "
-                    << h
-                    << "px height"
-                    << std::endl;
-                std::cerr << "Setting threads count to " << total_threads_count << std::endl;
-            }
-
-            std::cout
-                << "Blurring "
-                << input_path
-                << "with radius "
-                << BLUR_RADIUS << " in "
+            std::cerr
+                << "Warning! Cannot have more than "
                 << total_threads_count
-                << " threads"
+                << " threads for "
+                << h
+                << "px height"
                 << std::endl;
+            std::cerr << "Setting threads count to " << total_threads_count << std::endl;
+        }
 
-            ThreadData* params = new ThreadData[total_threads_count];
-            HANDLE* handles = new HANDLE[total_threads_count];
-            for (int i = 0; i < total_threads_count; i++)
-            {
-                const int top = i * section_height;
-                const bool is_last = i == total_threads_count - 1;
-                params[i] = ThreadData{
-                    &bmp,
-                    i,
-                    top,
-                    0,
-                    w,
-                    section_height + (is_last ? rest : 0),
-                    BLUR_RADIUS
-                };
-                handles[i] = CreateThread(nullptr, 0, &ThreadFunc, &params[i], CREATE_SUSPENDED, nullptr);
-            }
+        std::cout
+            << "Blurring "
+            << input_path
+            << "with radius "
+            << BLUR_RADIUS << " in "
+            << total_threads_count
+            << " threads"
+            << std::endl;
 
+        ThreadData* params = new ThreadData[total_threads_count];
+        HANDLE* handles = new HANDLE[total_threads_count];
+
+        for (int i = 0; i < total_threads_count; i++)
+        {
+            const int top = i * section_height;
+            const bool is_last = i == total_threads_count - 1;
+            params[i] = ThreadData{
+                &bmp,
+                i,
+                top,
+                0,
+                w,
+                section_height + (is_last ? rest : 0),
+                BLUR_RADIUS
+            };
+            handles[i] = CreateThread(nullptr, 0, &ThreadFunc, &params[i], CREATE_SUSPENDED, nullptr);
+        }
+
+        if (mode == "thread")
+        {
             for (int i = 0; i < total_threads_count; i++)
             {
                 ResumeThread(handles[i]);
             }
 
             WaitForMultipleObjects(total_threads_count, handles, true, INFINITE);
-
-            delete[] params;
-            delete[] handles;
-
-            bmp.WriteToFile(output_path.c_str());
         }
-    }
+        else
+        {
+            ThreadPool pool(total_threads_count);
 
+            for (int i = 0; i < total_threads_count; i++)
+            {
+                pool.Enqueue(&ThreadFunc, &params[i]);
+            }
+        }
+
+        delete[] params;
+        delete[] handles;
+
+        bmp.WriteToFile(output_path.c_str());
+    }
 
     return EXIT_SUCCESS;
 }
