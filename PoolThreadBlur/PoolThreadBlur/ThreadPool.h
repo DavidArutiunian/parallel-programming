@@ -23,18 +23,12 @@ private:
 
     std::queue<HANDLE> tasks;
 
-    CRITICAL_SECTION* lock;
-
     bool stop;
 
     static DWORD WINAPI WorkerThread(CONST LPVOID lp_param);
 };
 
-inline ThreadPool::ThreadPool(std::size_t threads) : lock(new CRITICAL_SECTION), stop(false) {
-    if (!InitializeCriticalSectionAndSpinCount(lock, 0x00000400))
-    {
-        throw std::runtime_error("InitializeCriticalSectionAndSpinCount failed");
-    }
+inline ThreadPool::ThreadPool(std::size_t threads) : stop(false) {
     for (std::size_t i = 0; i < threads; i++)
     {
         HANDLE worker = CreateThread(nullptr, 0, &WorkerThread, this, CREATE_SUSPENDED, nullptr);
@@ -51,8 +45,6 @@ inline ThreadPool::~ThreadPool() noexcept
     }
 
     WaitForMultipleObjects(workers.size(), &workers.front(), true, INFINITE);
-
-    DeleteCriticalSection(lock);
 }
 
 inline DWORD WINAPI ThreadPool::WorkerThread(CONST LPVOID lp_param)

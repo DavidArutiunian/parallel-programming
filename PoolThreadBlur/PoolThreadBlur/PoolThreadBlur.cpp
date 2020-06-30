@@ -10,6 +10,7 @@
 #include <vector>
 #include <utility>
 #include <tuple>
+#include <ctime>
 
 #include "EasyBMP.h"
 #include "ThreadPool.h"
@@ -114,6 +115,7 @@ auto get_arg_factory(int argc, char* argv[]) {
 
 int main(int argc, char* argv[])
 {
+    std::clock_t start = std::clock();
 
     const auto get_arg = get_arg_factory(argc, argv);
 
@@ -255,6 +257,9 @@ int main(int argc, char* argv[])
 
         bmp.WriteToFile(output_path.c_str());
     }
+
+    std::clock_t end = std::clock();
+    std::cout << std::endl << "Time: " << std::difftime(end, start) << "ms" << std::endl;
 
     return EXIT_SUCCESS;
 }
